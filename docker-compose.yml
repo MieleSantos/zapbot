@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: zapbot_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-zapbot}
+      POSTGRES_USER: ${POSTGRES_USER:-zapbot_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zapbot_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - zapbot_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: zapbot_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - zapbot_network
+
+  evolution-api:
+    image: atendai/evolution-api:v2.1.1
+    container_name: zapbot_evolution_api
+    restart: always
+    ports:
+      - "${EVOLUTION_API_PORT:-8080}:8080"
+    env_file:
+      - .env
+    privileged: true
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - SERVER_URL=${EVOLUTION_SERVER_URL:-http://localhost:8080}
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-evolution_api_key_123}
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER:-zapbot_user}:${POSTGRES_PASSWORD:-zapbot_password}@postgres:5432/${POSTGRES_DB:-zapbot}
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - DATABASE_SAVE_DATA_LABELS=true
+      - DATABASE_SAVE_DATA_HISTORIC=true
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution_v2
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/1
+      - CACHE_REDIS_PREFIX_KEY=evolution_v2
+      - CACHE_REDIS_SAVE_INSTANCES=false
+      - CACHE_LOCAL_ENABLED=false
+      - CONFIG_SESSION_PHONE_CLIENT=Evolution API
+      - CONFIG_SESSION_PHONE_NAME=ZapBot
+      - CONFIG_HANDSHAKE_QRCODE=true
+      - CONFIG_HANDSHAKE_READ_MESSAGES=false
+      - CONFIG_HANDSHAKE_READ_STATUS=false
+      - CONFIG_WEBSOCKET_GLOBAL_ENABLED=false
+      - CONFIG_LOGGER_LEVEL=DEBUG
+      - CONFIG_LOGGER_COLOR=true
+      - CONFIG_LOGGER_BAILEYS=error
+      - DEL_INSTANCE=false
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - zapbot_network
+
+volumes:
+  postgres_data:
+  redis:
+  evolution_instances:
+
+networks:
+  zapbot_network:
+    driver: bridge
