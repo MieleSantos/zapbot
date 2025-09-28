@@ -1,0 +1,89 @@
+ZapBot - Arquitetura do Sistema
+================================
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                    Cliente/Usuário                              │
+└─────────────────────┬───────────────────────────────────────────────────────────┘
+                      │ HTTP Requests
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           ZapBot FastAPI Application                           │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                        FastAPI Server (:8000)                          │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                              Routers                                   │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                    │   │
+│  │  │   Health    │  │  Instances  │  │  Messages   │                    │   │
+│  │  │   Router    │  │   Router    │  │   Router    │                    │   │
+│  │  │   /health   │  │ /instances  │  │ /messages   │                    │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘                    │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                              Services                                  │   │
+│  │                    Evolution Service (HTTP Client)                     │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                        Models & Config                                 │   │
+│  │  • Pydantic Models (Validation & Serialization)                        │   │
+│  │  • Settings (Environment Variables)                                    │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────┬───────────────────────────────────────────────────────────┘
+                      │ API Calls
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                            Evolution API (:8080)                               │
+│  • WhatsApp Integration (Baileys)                                              │
+│  • QR Code Generation                                                          │
+│  • Message Handling                                                            │
+│  • Instance Management                                                         │
+└─────────────────────┬───────────────────────────────────────────────────────────┘
+                      │ Store Data
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              Database Layer                                    │
+│                                                                                 │
+│  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐     │
+│  │         PostgreSQL (:5432)      │  │         Redis (:6379)           │     │
+│  │  • Instance Data                │  │  • Cache                       │     │
+│  │  • Message History              │  │  • Sessions                    │     │
+│  │  • Contacts & Chats             │  │  • Performance Data            │     │
+│  │  • Labels & Historic            │  │                                │     │
+│  └─────────────────────────────────┘  └─────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                      ▲
+                      │ WebSocket/QR Code
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                WhatsApp                                        │
+│                        (Mobile/Web Application)                               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+Fluxo de Dados:
+===============
+1. Cliente → ZapBot (HTTP Requests)
+2. ZapBot → Evolution API (API Calls)
+3. Evolution API → Database (Store Data)
+4. Evolution API ↔ WhatsApp (QR Code/Messages)
+
+Tecnologias:
+============
+• Backend: FastAPI (Python)
+• WhatsApp Integration: Evolution API
+• Database: PostgreSQL
+• Cache: Redis
+• Containerization: Docker & Docker Compose
+• Validation: Pydantic
+• HTTP Client: aiohttp
+
+Endpoints Principais:
+====================
+• GET  /health                    - Health check
+• POST /instances/                - Criar instância
+• GET  /instances/{name}/qrcode   - Obter QR Code
+• GET  /instances/{name}/status   - Status da instância
+• POST /messages/{name}/send      - Enviar mensagem
+• DELETE /instances/{name}        - Remover instância

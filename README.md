@@ -3,7 +3,11 @@ Projeto bot com zapIA Master
 
 ## Arquitetura
 
-![Arquitetura do Sistema](docs/arquitetuta.png)
+![Arquitetura do Sistema](docs/arquitetura.png)
+
+Para mais detalhes sobre a arquitetura, consulte:
+- [Documentação da Arquitetura](docs/arquitetura.md)
+- [Diagrama ASCII](docs/arquitetura_ascii.txt)
 
 ## Serviços
 
@@ -44,18 +48,12 @@ O Evolution API está configurado para:
 1. Acesse http://localhost:8080
 2. Crie uma nova instância
 3. Escaneie o QR Code com seu WhatsApp
-4. Use o cliente Python (`evolution_client.py`) para interagir com a API
 
-### Exemplo de uso
 
-```python
-from evolution_client import EvolutionAPIClient
 
-client = EvolutionAPIClient()
 
-# Criar instância
-await client.create_instance("minha_instancia")
 
-# Enviar mensagem
-await client.send_message("minha_instancia", "5511999999999", "Olá!")
-```
+
+
+
+

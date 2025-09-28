@@ -4,6 +4,7 @@ Cliente para integração com Evolution API
 import asyncio
 import json
 import os
+import base64
 import aiohttp
 import websockets
 from typing import Dict, Any, Optional
@@ -44,6 +45,60 @@ class EvolutionAPIClient:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=self.headers) as response:
                 return await response.json()
+    
+    async def wait_for_qr_code(self, instance_name: str, max_attempts: int = 30, delay: float = 2.0) -> Optional[str]:
+        """Aguarda o QR Code ser gerado"""
+        print(f"Aguardando QR Code para a instância {instance_name}...")
+        
+        for attempt in range(max_attempts):
+            try:
+                qr_result = await self.get_qr_code(instance_name)
+                
+                # Verifica se há QR code disponível
+                if qr_result.get('count', 0) > 0:
+                    qr_data = qr_result.get('base64', '')
+                    if qr_data:
+                        print(f"QR Code gerado com sucesso! (tentativa {attempt + 1})")
+                        return qr_data
+                
+                # Verifica o status da instância
+                status = await self.get_instance_status(instance_name)
+                instance_state = status.get('instance', {}).get('state', '')
+                
+                if instance_state == 'open':
+                    print("Instância já conectada!")
+                    return None
+                elif instance_state == 'close':
+                    print("Instância fechada. Tentando reconectar...")
+                    await self.get_qr_code(instance_name)
+                
+                print(f"Tentativa {attempt + 1}/{max_attempts} - QR Code ainda não disponível. Aguardando {delay}s...")
+                await asyncio.sleep(delay)
+                
+            except Exception as e:
+                print(f"Erro ao obter QR Code (tentativa {attempt + 1}): {e}")
+                await asyncio.sleep(delay)
+        
+        print("Timeout: QR Code não foi gerado dentro do tempo limite")
+        return None
+    
+    def save_qr_code_image(self, qr_data: str, filename: str = "qrcode.png") -> bool:
+        """Salva o QR Code como imagem"""
+        try:
+            # Remove o prefixo data:image/png;base64, se presente
+            if qr_data.startswith('data:image'):
+                qr_data = qr_data.split(',')[1]
+            
+            # Decodifica o base64 e salva como imagem
+            image_data = base64.b64decode(qr_data)
+            with open(filename, 'wb') as f:
+                f.write(image_data)
+            
+            print(f"QR Code salvo como {filename}")
+            return True
+        except Exception as e:
+            print(f"Erro ao salvar QR Code: {e}")
+            return False
     
     async def send_message(self, instance_name: str, number: str, message: str) -> Dict[str, Any]:
         """Envia uma mensagem de texto"""
@@ -145,13 +200,25 @@ async def main():
     result = await client.create_instance(instance_name)
     print(f"Instância criada: {result}")
     
-    # Obter QR Code
-    qr_result = await client.get_qr_code(instance_name)
-    print(f"QR Code: {qr_result}")
+    # Aguardar e obter QR Code
+    qr_code = await client.wait_for_qr_code(instance_name)
     
-    # Verificar status
+    if qr_code:
+        # Salvar QR Code como imagem
+        client.save_qr_code_image(qr_code, "whatsapp_qrcode.png")
+        print("\n" + "="*50)
+        print("QR CODE GERADO COM SUCESSO!")
+        print("="*50)
+        print("1. Abra o arquivo 'whatsapp_qrcode.png'")
+        print("2. Escaneie o QR Code com seu WhatsApp")
+        print("3. Aguarde a conexão ser estabelecida")
+        print("="*50)
+    else:
+        print("Não foi possível gerar o QR Code")
+    
+    # Verificar status final
     status = await client.get_instance_status(instance_name)
-    print(f"Status: {status}")
+    print(f"Status final: {status}")
 
 
 if __name__ == "__main__":
